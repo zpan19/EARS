@@ -5,9 +5,10 @@ from flask import (
     url_for,
     request,
     flash,
+    session,
 )
 
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from models import db, User
 
@@ -24,11 +25,6 @@ db.init_app(app)
 @app.route("/")
 def home():
     return redirect(url_for("login"))
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    return render_template("login.html")
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -61,9 +57,58 @@ def register():
         db.session.add(new_user)
         db.session.commit()
 
+        flash("Registration successful. Please log in.")
         return redirect(url_for("login"))
 
     return render_template("register.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        if not email or not password:
+            flash("Email and password are required.")
+            return render_template("login.html")
+
+        user = User.query.filter_by(email=email).first()
+
+        if user is None or not check_password_hash(
+            user.password_hash,
+            password,
+        ):
+            flash("Invalid email or password.")
+            return render_template("login.html")
+
+        session["user_id"] = user.id
+        session["user_name"] = user.name
+        session["role"] = user.role
+
+        return redirect(url_for("dashboard"))
+
+    return render_template("login.html")
+
+
+@app.route("/dashboard")
+def dashboard():
+    if "user_id" not in session:
+        flash("Please log in first.")
+        return redirect(url_for("login"))
+
+    return render_template(
+        "dashboard.html",
+        user_name=session["user_name"],
+        role=session["role"],
+    )
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("You have been logged out.")
+    return redirect(url_for("login"))
 
 
 if __name__ == "__main__":

@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <title>EARS Login</title>
 
     <link
@@ -23,6 +22,12 @@
               <p class="text-center text-muted mb-4">
                 Employment Application Review System
               </p>
+
+              <!-- Flash Message -->
+              {% with messages = get_flashed_messages() %} {% if messages %} {%
+              for message in messages %}
+              <div class="alert alert-info">{{ message }}</div>
+              {% endfor %} {% endif %} {% endwith %}
 
               <form method="POST" action="/login">
                 <div class="mb-3">
@@ -58,7 +63,8 @@
 
               <p class="text-center mt-3 mb-0">
                 Do not have an account?
-                <a href="/register">Register</a>
+
+                <a href="/register"> Register </a>
               </p>
             </div>
           </div>
