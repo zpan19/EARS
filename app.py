@@ -1,4 +1,5 @@
 import re
+from datetime import timedelta
 
 from flask import (
     Flask,
@@ -26,6 +27,7 @@ app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///ears.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = "ears-development-secret-key"
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 
 db.init_app(app)
 
@@ -345,9 +347,11 @@ def login():
             flash("Invalid email or password.")
             return render_template("login.html")
 
+        session.permanent = True
         session["user_id"] = user.id
         session["user_name"] = user.name
         session["role"] = user.role
+        
 
         return redirect(url_for("dashboard"))
 
@@ -377,13 +381,24 @@ def jobs():
         flash("Applicant access is required.")
         return redirect(url_for("dashboard"))
 
-    open_jobs = (
-        JobPosting.query.filter_by(status="Open")
-        .order_by(JobPosting.created_at.desc())
-        .all()
-    )
+    search_query = request.args.get("search", "").strip()
 
-    return render_template("jobs.html", jobs=open_jobs)
+    query = JobPosting.query.filter_by(status="Open")
+
+    if search_query:
+        query = query.filter(
+            JobPosting.title.ilike(f"%{search_query}%")
+        )
+
+    open_jobs = query.order_by(
+        JobPosting.created_at.desc()
+    ).all()
+
+    return render_template(
+        "jobs.html",
+        jobs=open_jobs,
+        search_query=search_query,
+    )
 
 
 @app.route("/apply/<int:job_id>", methods=["GET", "POST"])
@@ -582,7 +597,39 @@ def assign_reviewers():
         reviewers=reviewers,
         assignments=assignments,
     )
+@app.route(
+    "/assignments/<int:assignment_id>/delete",
+    methods=["POST"],
+)
+def delete_reviewer_assignment(assignment_id):
+    if not has_role("Chairperson"):
+        flash("Chairperson access is required.")
+        return redirect(url_for("dashboard"))
 
+    assignment = db.session.get(
+        ReviewerAssignment,
+        assignment_id,
+    )
+
+    if assignment is None:
+        flash("Reviewer assignment was not found.")
+        return redirect(url_for("assign_reviewers"))
+
+    application = assignment.application
+
+    db.session.delete(assignment)
+    db.session.commit()
+
+    remaining_assignments = ReviewerAssignment.query.filter_by(
+        application_id=application.id
+    ).count()
+
+    if remaining_assignments == 0 and application.status == "Under Review":
+        application.status = "Submitted"
+        db.session.commit()
+
+    flash("Reviewer assignment was removed.")
+    return redirect(url_for("assign_reviewers"))
 
 @app.route("/review-summary")
 def review_summary():
@@ -600,6 +647,47 @@ def review_summary():
         "review_summary.html",
         applications=applications,
     )
+
+@app.route(
+    "/applications/<int:application_id>/update-status",
+    methods=["POST"],
+)
+def update_application_status(application_id):
+    if not has_role("Chairperson"):
+        flash("Chairperson access is required.")
+        return redirect(url_for("dashboard"))
+
+    application = db.session.get(Application, application_id)
+
+    if application is None:
+        flash("Application was not found.")
+        return redirect(url_for("review_summary"))
+
+    new_status = request.form.get("status", "")
+
+    allowed_statuses = {
+        "Submitted",
+        "Under Review",
+        "Shortlisted",
+        "Accepted",
+        "Rejected",
+    }
+
+    if new_status not in allowed_statuses:
+        flash("Please select a valid application status.")
+        return redirect(url_for("review_summary"))
+
+    application.status = new_status
+    db.session.commit()
+
+    flash(
+        f"{application.applicant.name}'s application status "
+        f"was updated to {new_status}."
+    )
+
+    return redirect(url_for("review_summary"))
+
+
 
 @app.route("/assigned-applications")
 def assigned_applications():

@@ -28,59 +28,111 @@
     <div class="container py-5">
       <h1 class="mb-4">Application Review Summary</h1>
 
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert alert-success">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
       {% for application in applications %}
-      <div class="card shadow-sm mb-4">
-        <div class="card-header">
-          <strong>{{ application.applicant.name }}</strong>
-          — {{ application.job.title }}
-        </div>
-
-        <div class="card-body">
-          <p>
-            <strong>Application Status:</strong>
-            {{ application.status }}
-          </p>
-
-          {% if application.reviewer_assignments %}
-          <div class="table-responsive">
-            <table class="table table-bordered align-middle">
-              <thead>
-                <tr>
-                  <th>Reviewer</th>
-                  <th>Review Status</th>
-                  <th>Rating</th>
-                  <th>Recommendation</th>
-                  <th>Comments</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {% for assignment in application.reviewer_assignments %}
-                <tr>
-                  <td>{{ assignment.reviewer.name }}</td>
-                  <td>{{ assignment.status }}</td>
-
-                  {% if assignment.review %}
-                  <td>{{ assignment.review.rating }} / 5</td>
-                  <td>{{ assignment.review.recommendation }}</td>
-                  <td>{{ assignment.review.comments }}</td>
-                  {% else %}
-                  <td colspan="3">Review not submitted yet.</td>
-                  {% endif %}
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+        <div class="card shadow-sm mb-4">
+          <div class="card-header">
+            <strong>{{ application.applicant.name }}</strong>
+            — {{ application.job.title }}
           </div>
-          {% else %}
-          <div class="alert alert-secondary mb-0">
-            No reviewer has been assigned to this application.
+
+          <div class="card-body">
+            <div class="row align-items-end mb-3">
+              <div class="col-md-6">
+                <p class="mb-1">
+                  <strong>Application Status:</strong>
+                  {{ application.status }}
+                </p>
+              </div>
+
+              <div class="col-md-6">
+                <form
+                  method="POST"
+                  action="{{ url_for(
+                    'update_application_status',
+                    application_id=application.id
+                  ) }}"
+                  class="d-flex gap-2"
+                >
+                  <select name="status" class="form-select" required>
+                    {% for status in [
+                      "Submitted",
+                      "Under Review",
+                      "Shortlisted",
+                      "Accepted",
+                      "Rejected"
+                    ] %}
+                      <option
+                        value="{{ status }}"
+                        {% if application.status == status %}
+                          selected
+                        {% endif %}
+                      >
+                        {{ status }}
+                      </option>
+                    {% endfor %}
+                  </select>
+
+                  <button type="submit" class="btn btn-primary">
+                    Update
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {% if application.reviewer_assignments %}
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                  <thead>
+                    <tr>
+                      <th>Reviewer</th>
+                      <th>Review Status</th>
+                      <th>Rating</th>
+                      <th>Recommendation</th>
+                      <th>Comments</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {% for assignment in application.reviewer_assignments %}
+                      <tr>
+                        <td>{{ assignment.reviewer.name }}</td>
+                        <td>{{ assignment.status }}</td>
+
+                        {% if assignment.review %}
+                          <td>{{ assignment.review.rating }} / 5</td>
+                          <td>{{ assignment.review.recommendation }}</td>
+                          <td>{{ assignment.review.comments }}</td>
+                        {% else %}
+                          <td colspan="3">
+                            Review not submitted yet.
+                          </td>
+                        {% endif %}
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="alert alert-secondary mb-0">
+                No reviewer has been assigned to this application.
+              </div>
+            {% endif %}
           </div>
-          {% endif %}
         </div>
-      </div>
       {% else %}
-      <div class="alert alert-secondary">No applications were found.</div>
+        <div class="alert alert-secondary">
+          No applications were found.
+        </div>
       {% endfor %}
     </div>
   </body>

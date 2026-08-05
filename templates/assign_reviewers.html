@@ -97,6 +97,7 @@
               <th>Reviewer</th>
               <th>Assignment Status</th>
               <th>Assigned Date</th>
+              <th>Action</th>
             </tr>
           </thead>
 
@@ -108,10 +109,24 @@
               <td>{{ assignment.reviewer.name }}</td>
               <td>{{ assignment.status }}</td>
               <td>{{ assignment.assigned_at.strftime("%Y-%m-%d") }}</td>
+              <td>
+                <form
+                  method="POST"
+                  action="{{ url_for(
+                    'delete_reviewer_assignment',
+                    assignment_id=assignment.id
+                  ) }}"
+                  onsubmit="return confirm('Remove this reviewer assignment?');"
+                >
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    Remove
+                  </button>
+                </form>
+              </td>
             </tr>
             {% else %}
             <tr>
-              <td colspan="5">No reviewers have been assigned.</td>
+              <td colspan="6">No reviewers have been assigned.</td>
             </tr>
             {% endfor %}
           </tbody>
