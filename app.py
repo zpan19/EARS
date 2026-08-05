@@ -24,8 +24,6 @@ db.init_app(app)
 
 
 def validate_password(password):
-    """Return an error message if the password is invalid."""
-
     if len(password) < 8:
         return "Password must be at least 8 characters long."
 
@@ -45,14 +43,10 @@ def validate_password(password):
 
 
 def login_required():
-    """Return True if a user is logged in."""
-
     return "user_id" in session
 
 
 def has_role(required_role):
-    """Return True if the logged-in user has the required role."""
-
     return login_required() and session.get("role") == required_role
 
 
@@ -73,6 +67,7 @@ def register():
             flash("All fields are required.")
             return render_template("register.html")
 
+        # Administrator cannot be selected from the public registration page.
         allowed_roles = {"Applicant", "Reviewer", "Chairperson"}
 
         if role not in allowed_roles:
@@ -147,6 +142,10 @@ def dashboard():
         role=session["role"],
     )
 
+
+# ---------------------------------------------------------
+# Applicant routes
+# ---------------------------------------------------------
 
 @app.route("/jobs")
 def jobs():
@@ -227,6 +226,10 @@ def applications():
     )
 
 
+# ---------------------------------------------------------
+# Chairperson routes
+# ---------------------------------------------------------
+
 @app.route("/manage-jobs", methods=["GET", "POST"])
 def manage_jobs():
     if not has_role("Chairperson"):
@@ -271,10 +274,7 @@ def toggle_job_status(job_id):
 
     job = JobPosting.query.get_or_404(job_id)
 
-    if job.status == "Open":
-        job.status = "Closed"
-    else:
-        job.status = "Open"
+    job.status = "Closed" if job.status == "Open" else "Open"
 
     db.session.commit()
 
@@ -282,10 +282,145 @@ def toggle_job_status(job_id):
     return redirect(url_for("manage_jobs"))
 
 
+# ---------------------------------------------------------
+# Administrator routes
+# ---------------------------------------------------------
+
+@app.route("/admin")
+def admin_overview():
+    if not has_role("Administrator"):
+        flash("Administrator access is required.")
+        return redirect(url_for("dashboard"))
+
+    statistics = {
+        "total_users": User.query.count(),
+        "applicants": User.query.filter_by(role="Applicant").count(),
+        "reviewers": User.query.filter_by(role="Reviewer").count(),
+        "chairpersons": User.query.filter_by(role="Chairperson").count(),
+        "jobs": JobPosting.query.count(),
+        "open_jobs": JobPosting.query.filter_by(status="Open").count(),
+        "applications": Application.query.count(),
+    }
+
+    recent_users = (
+        User.query.order_by(User.id.desc())
+        .limit(5)
+        .all()
+    )
+
+    recent_applications = (
+        Application.query.order_by(
+            Application.submitted_at.desc()
+        )
+        .limit(5)
+        .all()
+    )
+
+    return render_template(
+        "admin_overview.html",
+        statistics=statistics,
+        recent_users=recent_users,
+        recent_applications=recent_applications,
+    )
+
+
+@app.route("/admin/applicant-view")
+def admin_applicant_view():
+    if not has_role("Administrator"):
+        flash("Administrator access is required.")
+        return redirect(url_for("dashboard"))
+
+    applicants = (
+        User.query.filter_by(role="Applicant")
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    open_jobs = (
+        JobPosting.query.filter_by(status="Open")
+        .order_by(JobPosting.created_at.desc())
+        .all()
+    )
+
+    all_applications = (
+        Application.query.order_by(
+            Application.submitted_at.desc()
+        )
+        .all()
+    )
+
+    return render_template(
+        "admin_applicant_view.html",
+        applicants=applicants,
+        jobs=open_jobs,
+        applications=all_applications,
+    )
+
+
+@app.route("/admin/reviewer-view")
+def admin_reviewer_view():
+    if not has_role("Administrator"):
+        flash("Administrator access is required.")
+        return redirect(url_for("dashboard"))
+
+    reviewers = (
+        User.query.filter_by(role="Reviewer")
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    all_applications = (
+        Application.query.order_by(
+            Application.submitted_at.desc()
+        )
+        .all()
+    )
+
+    return render_template(
+        "admin_reviewer_view.html",
+        reviewers=reviewers,
+        applications=all_applications,
+    )
+
+
+@app.route("/admin/chairperson-view")
+def admin_chairperson_view():
+    if not has_role("Administrator"):
+        flash("Administrator access is required.")
+        return redirect(url_for("dashboard"))
+
+    chairpersons = (
+        User.query.filter_by(role="Chairperson")
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    all_jobs = (
+        JobPosting.query.order_by(
+            JobPosting.created_at.desc()
+        )
+        .all()
+    )
+
+    all_applications = (
+        Application.query.order_by(
+            Application.submitted_at.desc()
+        )
+        .all()
+    )
+
+    return render_template(
+        "admin_chairperson_view.html",
+        chairpersons=chairpersons,
+        jobs=all_jobs,
+        applications=all_applications,
+    )
+
+
 @app.route("/manage-users")
 def manage_users():
-    if not has_role("Chairperson"):
-        flash("Chairperson access is required.")
+    if not has_role("Administrator"):
+        flash("Administrator access is required.")
         return redirect(url_for("dashboard"))
 
     users = User.query.order_by(User.id.asc()).all()
@@ -299,14 +434,14 @@ def manage_users():
 
 @app.route("/users/<int:user_id>/update-role", methods=["POST"])
 def update_user_role(user_id):
-    if not has_role("Chairperson"):
-        flash("Chairperson access is required.")
+    if not has_role("Administrator"):
+        flash("Administrator access is required.")
         return redirect(url_for("dashboard"))
 
     user = User.query.get_or_404(user_id)
 
     if user.id == session["user_id"]:
-        flash("You cannot change your own role while logged in.")
+        flash("You cannot change your own administrator role.")
         return redirect(url_for("manage_users"))
 
     new_role = request.form.get("role", "")
@@ -325,12 +460,12 @@ def update_user_role(user_id):
 
 @app.route("/users/<int:user_id>/delete", methods=["POST"])
 def delete_user(user_id):
-    if not has_role("Chairperson"):
-        flash("Chairperson access is required.")
+    if not has_role("Administrator"):
+        flash("Administrator access is required.")
         return redirect(url_for("dashboard"))
 
     if user_id == session["user_id"]:
-        flash("You cannot delete your own account while logged in.")
+        flash("You cannot delete your own administrator account.")
         return redirect(url_for("manage_users"))
 
     user = User.query.get_or_404(user_id)
