@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>EARS Register</title>
 
     <link
@@ -26,9 +27,9 @@
               <div class="alert alert-danger">{{ message }}</div>
               {% endfor %} {% endif %} {% endwith %}
 
-              <form method="POST" action="/register">
+              <form method="POST" action="{{ url_for('register') }}">
                 <div class="mb-3">
-                  <label for="name" class="form-label"> Name </label>
+                  <label for="name" class="form-label">Name</label>
 
                   <input
                     type="text"
@@ -41,7 +42,7 @@
                 </div>
 
                 <div class="mb-3">
-                  <label for="email" class="form-label"> Email </label>
+                  <label for="email" class="form-label">Email</label>
 
                   <input
                     type="email"
@@ -54,7 +55,7 @@
                 </div>
 
                 <div class="mb-3">
-                  <label for="password" class="form-label"> Password </label>
+                  <label for="password" class="form-label">Password</label>
 
                   <input
                     type="password"
@@ -62,12 +63,18 @@
                     id="password"
                     name="password"
                     placeholder="Enter your password"
+                    minlength="8"
                     required
                   />
+
+                  <div class="form-text">
+                    Use at least 8 characters, including uppercase, lowercase,
+                    number, and special character.
+                  </div>
                 </div>
 
                 <div class="mb-3">
-                  <label for="role" class="form-label"> Role </label>
+                  <label for="role" class="form-label">Role</label>
 
                   <select class="form-select" id="role" name="role" required>
                     <option value="">Select a role</option>
@@ -84,7 +91,7 @@
 
               <p class="text-center mt-3 mb-0">
                 Already have an account?
-                <a href="/login">Login</a>
+                <a href="{{ url_for('login') }}">Login</a>
               </p>
             </div>
           </div>

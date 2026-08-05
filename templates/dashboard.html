@@ -15,10 +15,10 @@
   <body class="bg-light">
     <nav class="navbar navbar-dark bg-primary">
       <div class="container">
-        <span class="navbar-brand mb-0 h1"> EARS </span>
+        <span class="navbar-brand mb-0 h1">EARS</span>
 
         <div class="d-flex align-items-center">
-          <span class="text-white me-3"> {{ user_name }} </span>
+          <span class="text-white me-3">{{ user_name }}</span>
 
           <a
             href="{{ url_for('logout') }}"
@@ -40,45 +40,40 @@
         </p>
       </div>
 
-      {% if role == "Applicant" %}
+      {% with messages = get_flashed_messages() %} {% if messages %} {% for
+      message in messages %}
+      <div class="alert alert-info">{{ message }}</div>
+      {% endfor %} {% endif %} {% endwith %} {% if role == "Applicant" %}
 
       <div class="row g-4">
-        <div class="col-md-4">
+        <div class="col-md-6">
           <div class="card shadow-sm h-100">
             <div class="card-body">
               <h4 class="card-title">View Jobs</h4>
 
-              <p class="card-text text-muted">Browse available job postings.</p>
-
-              <a href="#" class="btn btn-primary"> View Jobs </a>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-4">
-          <div class="card shadow-sm h-100">
-            <div class="card-body">
-              <h4 class="card-title">Submit Application</h4>
-
               <p class="card-text text-muted">
-                Apply for an available position.
+                Browse available job postings and submit an application.
               </p>
 
-              <a href="#" class="btn btn-primary"> Submit Application </a>
+              <a href="{{ url_for('jobs') }}" class="btn btn-primary">
+                View Jobs
+              </a>
             </div>
           </div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-6">
           <div class="card shadow-sm h-100">
             <div class="card-body">
               <h4 class="card-title">Application Status</h4>
 
               <p class="card-text text-muted">
-                Check the status of your applications.
+                View submitted applications and their current status.
               </p>
 
-              <a href="#" class="btn btn-primary"> View Status </a>
+              <a href="{{ url_for('applications') }}" class="btn btn-primary">
+                View Applications
+              </a>
             </div>
           </div>
         </div>
@@ -107,7 +102,7 @@
               <h4 class="card-title">Submit Review</h4>
 
               <p class="card-text text-muted">
-                Add comments, ratings and recommendations.
+                Add comments, ratings, and recommendations.
               </p>
 
               <a href="#" class="btn btn-primary"> Submit Review </a>
@@ -119,7 +114,7 @@
       {% elif role == "Chairperson" %}
 
       <div class="row g-4">
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-3">
           <div class="card shadow-sm h-100">
             <div class="card-body">
               <h4 class="card-title">Manage Jobs</h4>
@@ -128,12 +123,30 @@
                 Create and manage job postings.
               </p>
 
-              <a href="#" class="btn btn-primary"> Manage Jobs </a>
+              <a href="{{ url_for('manage_jobs') }}" class="btn btn-primary">
+                Manage Jobs
+              </a>
             </div>
           </div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-body">
+              <h4 class="card-title">Manage Users</h4>
+
+              <p class="card-text text-muted">
+                View registered users and manage their roles.
+              </p>
+
+              <a href="{{ url_for('manage_users') }}" class="btn btn-primary">
+                Manage Users
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
           <div class="card shadow-sm h-100">
             <div class="card-body">
               <h4 class="card-title">Assign Reviewers</h4>
@@ -147,7 +160,7 @@
           </div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-3">
           <div class="card shadow-sm h-100">
             <div class="card-body">
               <h4 class="card-title">Update Status</h4>

@@ -1,16 +1,17 @@
+import re
+
 from flask import (
     Flask,
-    render_template,
-    redirect,
-    url_for,
-    request,
     flash,
+    redirect,
+    render_template,
+    request,
     session,
+    url_for,
 )
+from werkzeug.security import check_password_hash, generate_password_hash
 
-from werkzeug.security import generate_password_hash, check_password_hash
-
-from models import db, User
+from models import Application, JobPosting, User, db
 
 
 app = Flask(__name__)
@@ -20,6 +21,39 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = "ears-development-secret-key"
 
 db.init_app(app)
+
+
+def validate_password(password):
+    """Return an error message if the password is invalid."""
+
+    if len(password) < 8:
+        return "Password must be at least 8 characters long."
+
+    if not re.search(r"[A-Z]", password):
+        return "Password must contain at least one uppercase letter."
+
+    if not re.search(r"[a-z]", password):
+        return "Password must contain at least one lowercase letter."
+
+    if not re.search(r"\d", password):
+        return "Password must contain at least one number."
+
+    if not re.search(r"[!@#$%^&*]", password):
+        return "Password must contain at least one special character."
+
+    return None
+
+
+def login_required():
+    """Return True if a user is logged in."""
+
+    return "user_id" in session
+
+
+def has_role(required_role):
+    """Return True if the logged-in user has the required role."""
+
+    return login_required() and session.get("role") == required_role
 
 
 @app.route("/")
@@ -39,18 +73,28 @@ def register():
             flash("All fields are required.")
             return render_template("register.html")
 
+        allowed_roles = {"Applicant", "Reviewer", "Chairperson"}
+
+        if role not in allowed_roles:
+            flash("Please select a valid role.")
+            return render_template("register.html")
+
+        password_error = validate_password(password)
+
+        if password_error:
+            flash(password_error)
+            return render_template("register.html")
+
         existing_user = User.query.filter_by(email=email).first()
 
         if existing_user:
             flash("An account with this email already exists.")
             return render_template("register.html")
 
-        password_hash = generate_password_hash(password)
-
         new_user = User(
             name=name,
             email=email,
-            password_hash=password_hash,
+            password_hash=generate_password_hash(password),
             role=role,
         )
 
@@ -93,7 +137,7 @@ def login():
 
 @app.route("/dashboard")
 def dashboard():
-    if "user_id" not in session:
+    if not login_required():
         flash("Please log in first.")
         return redirect(url_for("login"))
 
@@ -102,6 +146,201 @@ def dashboard():
         user_name=session["user_name"],
         role=session["role"],
     )
+
+
+@app.route("/jobs")
+def jobs():
+    if not has_role("Applicant"):
+        flash("Applicant access is required.")
+        return redirect(url_for("dashboard"))
+
+    open_jobs = (
+        JobPosting.query.filter_by(status="Open")
+        .order_by(JobPosting.created_at.desc())
+        .all()
+    )
+
+    return render_template("jobs.html", jobs=open_jobs)
+
+
+@app.route("/apply/<int:job_id>", methods=["GET", "POST"])
+def apply(job_id):
+    if not has_role("Applicant"):
+        flash("Applicant access is required.")
+        return redirect(url_for("dashboard"))
+
+    job = JobPosting.query.get_or_404(job_id)
+
+    if job.status != "Open":
+        flash("This job posting is no longer open.")
+        return redirect(url_for("jobs"))
+
+    existing_application = Application.query.filter_by(
+        applicant_id=session["user_id"],
+        job_id=job.id,
+    ).first()
+
+    if existing_application:
+        flash("You have already applied for this job.")
+        return redirect(url_for("applications"))
+
+    if request.method == "POST":
+        cover_letter = request.form.get("cover_letter", "").strip()
+
+        if not cover_letter:
+            flash("Cover letter is required.")
+            return render_template("apply.html", job=job)
+
+        application = Application(
+            cover_letter=cover_letter,
+            status="Submitted",
+            applicant_id=session["user_id"],
+            job_id=job.id,
+        )
+
+        db.session.add(application)
+        db.session.commit()
+
+        flash("Application submitted successfully.")
+        return redirect(url_for("applications"))
+
+    return render_template("apply.html", job=job)
+
+
+@app.route("/applications")
+def applications():
+    if not has_role("Applicant"):
+        flash("Applicant access is required.")
+        return redirect(url_for("dashboard"))
+
+    applicant_applications = (
+        Application.query.filter_by(
+            applicant_id=session["user_id"]
+        )
+        .order_by(Application.submitted_at.desc())
+        .all()
+    )
+
+    return render_template(
+        "applications.html",
+        applications=applicant_applications,
+    )
+
+
+@app.route("/manage-jobs", methods=["GET", "POST"])
+def manage_jobs():
+    if not has_role("Chairperson"):
+        flash("Chairperson access is required.")
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        description = request.form.get("description", "").strip()
+
+        if not title or not description:
+            flash("Job title and description are required.")
+            return redirect(url_for("manage_jobs"))
+
+        job = JobPosting(
+            title=title,
+            description=description,
+            status="Open",
+        )
+
+        db.session.add(job)
+        db.session.commit()
+
+        flash("Job posting created successfully.")
+        return redirect(url_for("manage_jobs"))
+
+    all_jobs = JobPosting.query.order_by(
+        JobPosting.created_at.desc()
+    ).all()
+
+    return render_template(
+        "manage_jobs.html",
+        jobs=all_jobs,
+    )
+
+
+@app.route("/jobs/<int:job_id>/toggle", methods=["POST"])
+def toggle_job_status(job_id):
+    if not has_role("Chairperson"):
+        flash("Chairperson access is required.")
+        return redirect(url_for("dashboard"))
+
+    job = JobPosting.query.get_or_404(job_id)
+
+    if job.status == "Open":
+        job.status = "Closed"
+    else:
+        job.status = "Open"
+
+    db.session.commit()
+
+    flash("Job status updated.")
+    return redirect(url_for("manage_jobs"))
+
+
+@app.route("/manage-users")
+def manage_users():
+    if not has_role("Chairperson"):
+        flash("Chairperson access is required.")
+        return redirect(url_for("dashboard"))
+
+    users = User.query.order_by(User.id.asc()).all()
+
+    return render_template(
+        "manage_users.html",
+        users=users,
+        current_user_id=session["user_id"],
+    )
+
+
+@app.route("/users/<int:user_id>/update-role", methods=["POST"])
+def update_user_role(user_id):
+    if not has_role("Chairperson"):
+        flash("Chairperson access is required.")
+        return redirect(url_for("dashboard"))
+
+    user = User.query.get_or_404(user_id)
+
+    if user.id == session["user_id"]:
+        flash("You cannot change your own role while logged in.")
+        return redirect(url_for("manage_users"))
+
+    new_role = request.form.get("role", "")
+    allowed_roles = {"Applicant", "Reviewer", "Chairperson"}
+
+    if new_role not in allowed_roles:
+        flash("Please select a valid role.")
+        return redirect(url_for("manage_users"))
+
+    user.role = new_role
+    db.session.commit()
+
+    flash(f"{user.name}'s role was updated successfully.")
+    return redirect(url_for("manage_users"))
+
+
+@app.route("/users/<int:user_id>/delete", methods=["POST"])
+def delete_user(user_id):
+    if not has_role("Chairperson"):
+        flash("Chairperson access is required.")
+        return redirect(url_for("dashboard"))
+
+    if user_id == session["user_id"]:
+        flash("You cannot delete your own account while logged in.")
+        return redirect(url_for("manage_users"))
+
+    user = User.query.get_or_404(user_id)
+    user_name = user.name
+
+    db.session.delete(user)
+    db.session.commit()
+
+    flash(f"{user_name}'s account was deleted successfully.")
+    return redirect(url_for("manage_users"))
 
 
 @app.route("/logout")
@@ -114,5 +353,22 @@ def logout():
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
+
+        admin_user = User.query.filter_by(
+            email="admin@ears.com"
+        ).first()
+
+        if admin_user is None:
+            admin_user = User(
+                name="EARS Administrator",
+                email="admin@ears.com",
+                password_hash=generate_password_hash("Admin123!"),
+                role="Administrator",
+            )
+
+            db.session.add(admin_user)
+            db.session.commit()
+
+            print("Default administrator account created.")
 
     app.run(debug=True)
