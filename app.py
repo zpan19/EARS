@@ -50,6 +50,223 @@ def has_role(required_role):
     return login_required() and session.get("role") == required_role
 
 
+def seed_demo_data():
+    """Create realistic demonstration data without creating duplicates."""
+
+    demo_users = [
+        {
+            "name": "EARS Administrator",
+            "email": "admin@ears.com",
+            "password": "Admin123!",
+            "role": "Administrator",
+        },
+        {
+            "name": "Dr. Emily Carter",
+            "email": "chairperson@ears.com",
+            "password": "Chair123!",
+            "role": "Chairperson",
+        },
+        {
+            "name": "Dr. Michael Chen",
+            "email": "reviewer1@ears.com",
+            "password": "Review123!",
+            "role": "Reviewer",
+        },
+        {
+            "name": "Prof. Sarah Wilson",
+            "email": "reviewer2@ears.com",
+            "password": "Review123!",
+            "role": "Reviewer",
+        },
+        {
+            "name": "Alice Johnson",
+            "email": "alice@applicant.com",
+            "password": "Applicant123!",
+            "role": "Applicant",
+        },
+        {
+            "name": "Daniel Brown",
+            "email": "daniel@applicant.com",
+            "password": "Applicant123!",
+            "role": "Applicant",
+        },
+        {
+            "name": "Sophia Lee",
+            "email": "sophia@applicant.com",
+            "password": "Applicant123!",
+            "role": "Applicant",
+        },
+    ]
+
+    for demo_user in demo_users:
+        existing_user = User.query.filter_by(
+            email=demo_user["email"]
+        ).first()
+
+        if existing_user is None:
+            new_user = User(
+                name=demo_user["name"],
+                email=demo_user["email"],
+                password_hash=generate_password_hash(
+                    demo_user["password"]
+                ),
+                role=demo_user["role"],
+            )
+
+            db.session.add(new_user)
+
+    db.session.commit()
+
+    demo_jobs = [
+        {
+            "title": "Assistant Professor – Artificial Intelligence",
+            "description": (
+                "The School of Computer Science and Technology is seeking "
+                "an Assistant Professor specializing in artificial "
+                "intelligence, machine learning, and data science. "
+                "Responsibilities include teaching, research, and student "
+                "supervision."
+            ),
+            "status": "Open",
+        },
+        {
+            "title": "Sessional Instructor – Software Engineering",
+            "description": (
+                "The successful applicant will teach undergraduate software "
+                "engineering courses, including software design, testing, "
+                "project management, and agile development."
+            ),
+            "status": "Open",
+        },
+        {
+            "title": "Research Assistant – Data Analytics",
+            "description": (
+                "This position supports a research project involving data "
+                "collection, Python programming, statistical analysis, and "
+                "the preparation of research reports."
+            ),
+            "status": "Open",
+        },
+        {
+            "title": "Teaching Assistant – Introduction to Programming",
+            "description": (
+                "The teaching assistant will support laboratory sessions, "
+                "answer student questions, grade assignments, and assist "
+                "with introductory Python programming activities."
+            ),
+            "status": "Closed",
+        },
+    ]
+
+    for demo_job in demo_jobs:
+        existing_job = JobPosting.query.filter_by(
+            title=demo_job["title"]
+        ).first()
+
+        if existing_job is None:
+            new_job = JobPosting(
+                title=demo_job["title"],
+                description=demo_job["description"],
+                status=demo_job["status"],
+            )
+
+            db.session.add(new_job)
+
+    db.session.commit()
+
+    alice = User.query.filter_by(
+        email="alice@applicant.com"
+    ).first()
+
+    daniel = User.query.filter_by(
+        email="daniel@applicant.com"
+    ).first()
+
+    sophia = User.query.filter_by(
+        email="sophia@applicant.com"
+    ).first()
+
+    ai_job = JobPosting.query.filter_by(
+        title="Assistant Professor – Artificial Intelligence"
+    ).first()
+
+    software_job = JobPosting.query.filter_by(
+        title="Sessional Instructor – Software Engineering"
+    ).first()
+
+    data_job = JobPosting.query.filter_by(
+        title="Research Assistant – Data Analytics"
+    ).first()
+
+    demo_applications = [
+        {
+            "applicant": alice,
+            "job": ai_job,
+            "cover_letter": (
+                "I am applying for the Assistant Professor position because "
+                "my academic background and research interests focus on "
+                "machine learning and responsible artificial intelligence."
+            ),
+            "status": "Under Review",
+        },
+        {
+            "applicant": daniel,
+            "job": software_job,
+            "cover_letter": (
+                "I have professional software development experience and "
+                "strong knowledge of agile methods, testing, and software "
+                "architecture."
+            ),
+            "status": "Submitted",
+        },
+        {
+            "applicant": sophia,
+            "job": data_job,
+            "cover_letter": (
+                "My experience with Python, statistics, and data visualization "
+                "makes me a strong candidate for the research assistant role."
+            ),
+            "status": "Shortlisted",
+        },
+        {
+            "applicant": alice,
+            "job": data_job,
+            "cover_letter": (
+                "I would like to contribute my programming and analytical "
+                "skills to the data analytics research project."
+            ),
+            "status": "Submitted",
+        },
+    ]
+
+    for demo_application in demo_applications:
+        if (
+            demo_application["applicant"] is None
+            or demo_application["job"] is None
+        ):
+            continue
+
+        existing_application = Application.query.filter_by(
+            applicant_id=demo_application["applicant"].id,
+            job_id=demo_application["job"].id,
+        ).first()
+
+        if existing_application is None:
+            new_application = Application(
+                applicant_id=demo_application["applicant"].id,
+                job_id=demo_application["job"].id,
+                cover_letter=demo_application["cover_letter"],
+                status=demo_application["status"],
+            )
+
+            db.session.add(new_application)
+
+    db.session.commit()
+
+    print("Demo users, jobs, and applications are ready.")
+
+
+
 @app.route("/")
 def home():
     return redirect(url_for("login"))
@@ -488,22 +705,6 @@ def logout():
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-
-        admin_user = User.query.filter_by(
-            email="admin@ears.com"
-        ).first()
-
-        if admin_user is None:
-            admin_user = User(
-                name="EARS Administrator",
-                email="admin@ears.com",
-                password_hash=generate_password_hash("Admin123!"),
-                role="Administrator",
-            )
-
-            db.session.add(admin_user)
-            db.session.commit()
-
-            print("Default administrator account created.")
+        seed_demo_data()
 
     app.run(debug=True)
