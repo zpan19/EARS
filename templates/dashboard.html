@@ -49,10 +49,10 @@
         <div class="col-md-6">
           <div class="card shadow-sm h-100">
             <div class="card-body">
-              <h4>View Jobs</h4>
+              <h4 class="card-title">View Jobs</h4>
 
-              <p class="text-muted">
-                Browse open job postings and apply for a position.
+              <p class="card-text text-muted">
+                Browse open job postings and apply for available positions.
               </p>
 
               <a href="{{ url_for('jobs') }}" class="btn btn-primary">
@@ -65,10 +65,10 @@
         <div class="col-md-6">
           <div class="card shadow-sm h-100">
             <div class="card-body">
-              <h4>My Applications</h4>
+              <h4 class="card-title">My Applications</h4>
 
-              <p class="text-muted">
-                View submitted applications and their status.
+              <p class="card-text text-muted">
+                View your submitted applications and current status.
               </p>
 
               <a href="{{ url_for('applications') }}" class="btn btn-primary">
@@ -85,15 +85,18 @@
         <div class="col-md-6">
           <div class="card shadow-sm h-100">
             <div class="card-body">
-              <h4>Assigned Applications</h4>
+              <h4 class="card-title">Assigned Applications</h4>
 
-              <p class="text-muted">
-                View applications assigned for evaluation.
+              <p class="card-text text-muted">
+                View applications assigned to you for evaluation.
               </p>
 
-              <button class="btn btn-primary" disabled>
-                Coming in Next Module
-              </button>
+              <a
+                href="{{ url_for('assigned_applications') }}"
+                class="btn btn-primary"
+              >
+                View Assignments
+              </a>
             </div>
           </div>
         </div>
@@ -101,15 +104,18 @@
         <div class="col-md-6">
           <div class="card shadow-sm h-100">
             <div class="card-body">
-              <h4>Submit Review</h4>
+              <h4 class="card-title">Submit Reviews</h4>
 
-              <p class="text-muted">
-                Submit comments, ratings, and recommendations.
+              <p class="card-text text-muted">
+                Submit ratings, comments, and recommendations.
               </p>
 
-              <button class="btn btn-primary" disabled>
-                Coming in Next Module
-              </button>
+              <a
+                href="{{ url_for('assigned_applications') }}"
+                class="btn btn-primary"
+              >
+                Review Applications
+              </a>
             </div>
           </div>
         </div>
@@ -121,9 +127,11 @@
         <div class="col-md-4">
           <div class="card shadow-sm h-100">
             <div class="card-body">
-              <h4>Manage Jobs</h4>
+              <h4 class="card-title">Manage Jobs</h4>
 
-              <p class="text-muted">Create, open, and close job postings.</p>
+              <p class="card-text text-muted">
+                Create, open, close, and review job postings.
+              </p>
 
               <a href="{{ url_for('manage_jobs') }}" class="btn btn-primary">
                 Manage Jobs
@@ -135,15 +143,18 @@
         <div class="col-md-4">
           <div class="card shadow-sm h-100">
             <div class="card-body">
-              <h4>Assign Reviewers</h4>
+              <h4 class="card-title">Assign Reviewers</h4>
 
-              <p class="text-muted">
+              <p class="card-text text-muted">
                 Assign reviewers to submitted applications.
               </p>
 
-              <button class="btn btn-primary" disabled>
-                Coming in Next Module
-              </button>
+              <a
+                href="{{ url_for('assign_reviewers') }}"
+                class="btn btn-primary"
+              >
+                Assign Reviewers
+              </a>
             </div>
           </div>
         </div>
@@ -151,15 +162,15 @@
         <div class="col-md-4">
           <div class="card shadow-sm h-100">
             <div class="card-body">
-              <h4>Application Decisions</h4>
+              <h4 class="card-title">Review Summary</h4>
 
-              <p class="text-muted">
-                Review results and update application status.
+              <p class="card-text text-muted">
+                View reviewer ratings, comments, and recommendations.
               </p>
 
-              <button class="btn btn-primary" disabled>
-                Coming in Next Module
-              </button>
+              <a href="{{ url_for('review_summary') }}" class="btn btn-primary">
+                View Review Summary
+              </a>
             </div>
           </div>
         </div>
@@ -171,9 +182,9 @@
         <div class="col-md-6 col-lg-4">
           <div class="card shadow-sm h-100 border-primary">
             <div class="card-body">
-              <h4>System Overview</h4>
+              <h4 class="card-title">System Overview</h4>
 
-              <p class="text-muted">
+              <p class="card-text text-muted">
                 View system statistics, users, jobs, and applications.
               </p>
 
@@ -187,9 +198,9 @@
         <div class="col-md-6 col-lg-4">
           <div class="card shadow-sm h-100">
             <div class="card-body">
-              <h4>Manage Users</h4>
+              <h4 class="card-title">Manage Users</h4>
 
-              <p class="text-muted">
+              <p class="card-text text-muted">
                 View accounts, update roles, and delete users.
               </p>
 
@@ -203,17 +214,17 @@
         <div class="col-md-6 col-lg-4">
           <div class="card shadow-sm h-100">
             <div class="card-body">
-              <h4>Applicant View</h4>
+              <h4 class="card-title">Applicant View</h4>
 
-              <p class="text-muted">
-                Preview applicants, available jobs, and applications.
+              <p class="card-text text-muted">
+                Preview applicants, open jobs, and submitted applications.
               </p>
 
               <a
                 href="{{ url_for('admin_applicant_view') }}"
                 class="btn btn-outline-primary"
               >
-                Preview
+                Preview Applicant View
               </a>
             </div>
           </div>
@@ -222,17 +233,17 @@
         <div class="col-md-6 col-lg-4">
           <div class="card shadow-sm h-100">
             <div class="card-body">
-              <h4>Reviewer View</h4>
+              <h4 class="card-title">Reviewer View</h4>
 
-              <p class="text-muted">
-                Preview reviewers and reviewable applications.
+              <p class="card-text text-muted">
+                Preview reviewers, assigned tasks, and review activity.
               </p>
 
               <a
                 href="{{ url_for('admin_reviewer_view') }}"
                 class="btn btn-outline-primary"
               >
-                Preview
+                Preview Reviewer View
               </a>
             </div>
           </div>
@@ -241,17 +252,17 @@
         <div class="col-md-6 col-lg-4">
           <div class="card shadow-sm h-100">
             <div class="card-body">
-              <h4>Chairperson View</h4>
+              <h4 class="card-title">Chairperson View</h4>
 
-              <p class="text-muted">
-                Preview job and application management information.
+              <p class="card-text text-muted">
+                Preview job, application, and reviewer management data.
               </p>
 
               <a
                 href="{{ url_for('admin_chairperson_view') }}"
                 class="btn btn-outline-primary"
               >
-                Preview
+                Preview Chairperson View
               </a>
             </div>
           </div>

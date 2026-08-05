@@ -11,7 +11,14 @@ from flask import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from models import Application, JobPosting, User, db
+from models import (
+    Application,
+    JobPosting,
+    Review,
+    ReviewerAssignment,
+    User,
+    db,
+)
 
 
 app = Flask(__name__)
@@ -498,7 +505,202 @@ def toggle_job_status(job_id):
     flash("Job status updated.")
     return redirect(url_for("manage_jobs"))
 
+@app.route("/assign-reviewers", methods=["GET", "POST"])
+def assign_reviewers():
+    if not has_role("Chairperson"):
+        flash("Chairperson access is required.")
+        return redirect(url_for("dashboard"))
 
+    if request.method == "POST":
+        application_id = request.form.get("application_id", type=int)
+        reviewer_id = request.form.get("reviewer_id", type=int)
+
+        if not application_id or not reviewer_id:
+            flash("Please select an application and reviewer.")
+            return redirect(url_for("assign_reviewers"))
+
+        application = db.session.get(Application, application_id)
+        reviewer = db.session.get(User, reviewer_id)
+
+        if application is None:
+            flash("Application was not found.")
+            return redirect(url_for("assign_reviewers"))
+
+        if reviewer is None or reviewer.role != "Reviewer":
+            flash("Please select a valid reviewer.")
+            return redirect(url_for("assign_reviewers"))
+
+        existing_assignment = ReviewerAssignment.query.filter_by(
+            application_id=application.id,
+            reviewer_id=reviewer.id,
+        ).first()
+
+        if existing_assignment:
+            flash("This reviewer is already assigned to this application.")
+            return redirect(url_for("assign_reviewers"))
+
+        assignment = ReviewerAssignment(
+            application_id=application.id,
+            reviewer_id=reviewer.id,
+            status="Assigned",
+        )
+
+        application.status = "Under Review"
+
+        db.session.add(assignment)
+        db.session.commit()
+
+        flash(
+            f"{reviewer.name} was assigned to review "
+            f"{application.applicant.name}'s application."
+        )
+
+        return redirect(url_for("assign_reviewers"))
+
+    all_applications = (
+        Application.query
+        .order_by(Application.submitted_at.desc())
+        .all()
+    )
+
+    reviewers = (
+        User.query
+        .filter_by(role="Reviewer")
+        .order_by(User.name.asc())
+        .all()
+    )
+
+    assignments = (
+        ReviewerAssignment.query
+        .order_by(ReviewerAssignment.assigned_at.desc())
+        .all()
+    )
+
+    return render_template(
+        "assign_reviewers.html",
+        applications=all_applications,
+        reviewers=reviewers,
+        assignments=assignments,
+    )
+
+
+@app.route("/review-summary")
+def review_summary():
+    if not has_role("Chairperson"):
+        flash("Chairperson access is required.")
+        return redirect(url_for("dashboard"))
+
+    applications = (
+        Application.query
+        .order_by(Application.submitted_at.desc())
+        .all()
+    )
+
+    return render_template(
+        "review_summary.html",
+        applications=applications,
+    )
+
+@app.route("/assigned-applications")
+def assigned_applications():
+    if not has_role("Reviewer"):
+        flash("Reviewer access is required.")
+        return redirect(url_for("dashboard"))
+
+    assignments = (
+        ReviewerAssignment.query
+        .filter_by(reviewer_id=session["user_id"])
+        .order_by(ReviewerAssignment.assigned_at.desc())
+        .all()
+    )
+
+    return render_template(
+        "assigned_applications.html",
+        assignments=assignments,
+    )
+
+
+@app.route(
+    "/assignments/<int:assignment_id>/review",
+    methods=["GET", "POST"],
+)
+def submit_review(assignment_id):
+    if not has_role("Reviewer"):
+        flash("Reviewer access is required.")
+        return redirect(url_for("dashboard"))
+
+    assignment = db.session.get(ReviewerAssignment, assignment_id)
+
+    if assignment is None:
+        flash("Reviewer assignment was not found.")
+        return redirect(url_for("assigned_applications"))
+
+    if assignment.reviewer_id != session["user_id"]:
+        flash("You are not assigned to this application.")
+        return redirect(url_for("assigned_applications"))
+
+    existing_review = assignment.review
+
+    if request.method == "POST":
+        rating = request.form.get("rating", type=int)
+        comments = request.form.get("comments", "").strip()
+        recommendation = request.form.get("recommendation", "")
+
+        allowed_recommendations = {
+            "Recommend",
+            "Do Not Recommend",
+            "Needs Discussion",
+        }
+
+        if rating is None or rating < 1 or rating > 5:
+            flash("Rating must be between 1 and 5.")
+            return render_template(
+                "submit_review.html",
+                assignment=assignment,
+                existing_review=existing_review,
+            )
+
+        if not comments:
+            flash("Review comments are required.")
+            return render_template(
+                "submit_review.html",
+                assignment=assignment,
+                existing_review=existing_review,
+            )
+
+        if recommendation not in allowed_recommendations:
+            flash("Please select a valid recommendation.")
+            return render_template(
+                "submit_review.html",
+                assignment=assignment,
+                existing_review=existing_review,
+            )
+
+        if existing_review:
+            existing_review.rating = rating
+            existing_review.comments = comments
+            existing_review.recommendation = recommendation
+        else:
+            review = Review(
+                assignment_id=assignment.id,
+                rating=rating,
+                comments=comments,
+                recommendation=recommendation,
+            )
+
+            db.session.add(review)
+
+        assignment.status = "Completed"
+        db.session.commit()
+
+        flash("Review submitted successfully.")
+        return redirect(url_for("assigned_applications"))
+
+    return render_template(
+        "submit_review.html",
+        assignment=assignment,
+        existing_review=existing_review,
+    )
 # ---------------------------------------------------------
 # Administrator routes
 # ---------------------------------------------------------
